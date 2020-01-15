@@ -11,8 +11,6 @@
 <body>
     <div style="overflow: auto">
         <div class="button" onclick="uploadClick()">Upload image and click on it</div>
-        <!-- <div class="button" onclick="trace()">Create polygons by current selection</div>
-        <div class="button" onclick="paint('FF0000', 0.35)">Paint the selection</div> -->
         <input id="file-upload" type="file" accept="image/*" onchange="imgChange(this)" />
         
     </div>
@@ -67,7 +65,7 @@ window.onload = function() {
     colorThreshold = 15;
     blurRadius = 5;
     simplifyTolerant = 0;
-    simplifyCount = 30;
+    simplifyCount = 30; // count: min number of points when the contour is simplified
     hatchLength = 4;
     hatchOffset = 0;
 
@@ -115,8 +113,7 @@ function initCanvas(img) {
     canvas.setHeight(img.height);
     imageInfo = {
         width: img.width,
-        height: img.height,
-        context: document.getElementById("resultCanvas").getContext("2d")
+        height: img.height
     };
     mask = null;
     const imgInstance = new fabric.Image(img);
@@ -197,7 +194,6 @@ function drawMask(x, y) {
     temp.bytes = 4
     mask = MagicWand.floodFill(image, x, y, colorThreshold, hasMask, true);
     mask = MagicWand.gaussBlurOnlyBorder(mask, blurRadius);
-    // drawBorder();
     test1(mask)
 };
 function test1(mask) {
@@ -210,8 +206,6 @@ function test1(mask) {
     }
 }
 function path(contours) {
-    // contours.sort(compare("x"))
-    // contours.sort(compare("y"))
     let str = `M ${contours[0].x} ${contours[0].y}`
     for(let i=0;i<contours.length;i++){
         let item = contours[i]
@@ -259,106 +253,7 @@ function setVisited() {
         hasMask = mask && mask.data
     }
 }
-function hatchTick() {
-    hatchOffset = (hatchOffset + 1) % (hatchLength * 2);
-    drawBorder(true);
-};
-function drawBorder(noBorder) {
-    if (!mask) return;
-    
-    var x,y,i,j,
-        w = imageInfo.width,
-        h = imageInfo.height,
-        ctx = imageInfo.context,
-        imgData = ctx.createImageData(w, h),
-        res = imgData.data;
-    
-    if (!noBorder) cacheInd = MagicWand.getBorderIndices(mask);
-    
-    ctx.clearRect(0, 0, w, h);
-    
-    var len = cacheInd.length;
-    for (j = 0; j < len; j++) {
-        i = cacheInd[j];
-        x = i % w; // calc x by index
-        y = (i - x) / w; // calc y by index
-        k = (y * w + x) * 4; 
-        if ((x + y + hatchOffset) % (hatchLength * 2) < hatchLength) { // detect hatch color 
-            res[k + 3] = 255; // black, change only alpha
-        } else {
-            res[k] = 255; // white
-            res[k + 1] = 255;
-            res[k + 2] = 255;
-            res[k + 3] = 255;
-        }
-    }
 
-    ctx.putImageData(imgData, 0, 0);
-};
-function trace() {
-    var cs = MagicWand.traceContours(mask);
-    cs = MagicWand.simplifyContours(cs, simplifyTolerant, simplifyCount);
-
-    mask = null;
-
-    // draw contours
-    var ctx = imageInfo.context;
-    ctx.clearRect(0, 0, imageInfo.width, imageInfo.height);
-    //inner
-    ctx.beginPath();
-    for (var i = 0; i < cs.length; i++) {
-        if (!cs[i].inner) continue;
-        var ps = cs[i].points;
-        ctx.moveTo(ps[0].x, ps[0].y);
-        for (var j = 1; j < ps.length; j++) {
-            ctx.lineTo(ps[j].x, ps[j].y);
-        }
-    }
-    ctx.strokeStyle = "red";
-    ctx.stroke();    
-    //outer
-    ctx.beginPath();
-    for (var i = 0; i < cs.length; i++) {
-        if (cs[i].inner) continue;
-        var ps = cs[i].points;
-        ctx.moveTo(ps[0].x, ps[0].y);
-        for (var j = 1; j < ps.length; j++) {
-            ctx.lineTo(ps[j].x, ps[j].y);
-        }
-    }
-    ctx.strokeStyle = "blue";
-    ctx.stroke();    
-};
-function paint(color, alpha) {
-    if (!mask) return;
-    
-    var rgba = hexToRgb(color, alpha);
-    
-    var x,y,
-    		data = mask.data,
-    		bounds = mask.bounds,
-        maskW = mask.width,
-        w = imageInfo.width,
-        h = imageInfo.height,
-        ctx = imageInfo.context,
-        imgData = ctx.createImageData(w, h),
-        res = imgData.data;
-    
-    for (y = bounds.minY; y <= bounds.maxY; y++) {
-      for (x = bounds.minX; x <= bounds.maxX; x++) {
-      		if (data[y * maskW + x] == 0) continue;
-          k = (y * w + x) * 4; 
-          res[k] = rgba[0];
-          res[k + 1] = rgba[1];
-          res[k + 2] = rgba[2];
-	        res[k + 3] = rgba[3];
-      }
-		}
-    
-    mask = null;
-    
-    ctx.putImageData(imgData, 0, 0);
-};
 function hexToRgb(hex, alpha) {
   var int = parseInt(hex, 16);
   var r = (int >> 16) & 255;
