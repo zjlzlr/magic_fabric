@@ -60,7 +60,9 @@
 <script>
 let canvas = null
 var mask = null;
-var hasMask = null
+var hasMask = null;
+const vleft = 100;
+const vtop = 50;
 window.onload = function() {
     colorThreshold = 15;
     blurRadius = 5;
@@ -108,20 +110,25 @@ function imgChange (inp) {
 function initCanvas(img) {
     // var cvs = document.getElementById("resultCanvas");
     // var canvas = cvs.getContext("2d")
-    canvas = new fabric.Canvas('resultCanvas')
-    canvas.setWidth(img.width);
-    canvas.setHeight(img.height);
+    canvas = new fabric.Canvas('resultCanvas', {
+        backgroundColor: "#999999",
+    })
+    canvas.setWidth(document.body.offsetWidth);
+    canvas.setHeight(document.body.offsetHeight);
     imageInfo = {
-        width: img.width,
-        height: img.height
+        width: img.width+vleft,
+        height: img.height+vtop
     };
     mask = null;
-    const imgInstance = new fabric.Image(img);
+    const imgInstance = new fabric.Image(img, {
+        left: vleft,
+        top: vtop
+    });
     canvas.add(imgInstance);
     var tempCtx = document.createElement("canvas").getContext("2d");
     tempCtx.canvas.width = imageInfo.width;
     tempCtx.canvas.height = imageInfo.height;
-    tempCtx.drawImage(img, 0, 0);
+    tempCtx.drawImage(img, vleft, vtop);
     // canvas.drawImage(img, 0, 0);
     imageInfo.data = tempCtx.getImageData(0, 0, imageInfo.width, imageInfo.height);
     initEvent()
@@ -130,16 +137,12 @@ function initEvent() {
     canvas.on("mouse:down", (options) => {
         onMouseDown(options.e)
     });
-    canvas.on("mouse:up", (options) => {
-        onMouseUp(options.e)
-    });
 }
 function getMousePosition(e) {
     return { x: e.layerX, y: e.layerY };
 };
 function onMouseDown(e) {
     if (e.button == 0) {
-        allowDraw = true;
         downPoint = getMousePosition(e);
         const objList = canvas.getObjects()
         const obj = objList[objList.length-1]
@@ -149,31 +152,6 @@ function onMouseDown(e) {
         }
         drawMask(downPoint.x, downPoint.y);
     }
-    else allowDraw = false;
-};
-function onMouseMove(e) {
-    if (allowDraw) {
-        var p = getMousePosition(e);
-        if (p.x != downPoint.x || p.y != downPoint.y) {
-            var dx = p.x - downPoint.x,
-                dy = p.y - downPoint.y,
-                len = Math.sqrt(dx * dx + dy * dy),
-                adx = Math.abs(dx),
-                ady = Math.abs(dy),
-                sign = adx > ady ? dx / adx : dy / ady;
-            sign = sign < 0 ? sign / 5 : sign / 3;
-            var thres = Math.min(Math.max(colorThreshold + Math.floor(sign * len), 1), 255);
-            //var thres = Math.min(colorThreshold + Math.floor(len / 3), 255);
-            // if (thres != currentThreshold) {
-            //     currentThreshold = thres;
-            //     drawMask(downPoint.x, downPoint.y);
-            // }
-        }
-    }
-};
-function onMouseUp(e) {
-    allowDraw = false;
-    // currentThreshold = colorThreshold;
 };
 // function showThreshold() {
 //     document.getElementById("threshold").value = currentThreshold;
