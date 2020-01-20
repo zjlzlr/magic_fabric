@@ -20,6 +20,7 @@
         <input id="threshold" type="number" placeholder="threshold"/>
         <button onclick="updateShold()">修改threshold</button>
         <button onclick="reDraw()">确定</button>
+        <button onclick="moveImage()">移动</button>
     </div>
     <div>(hold left mouse button and move to change the color threshold)</div>
     <div class='wrapper'>
@@ -61,8 +62,10 @@
 let canvas = null
 var mask = null;
 var hasMask = null;
-const vleft = 100;
-const vtop = 50;
+let vleft = 100;
+let vtop = 50;
+let curImage = null;
+let tempCtx = null;
 window.onload = function() {
     colorThreshold = 15;
     blurRadius = 5;
@@ -101,13 +104,15 @@ function imgChange (inp) {
             var img = document.getElementById("test-picture");
             img.setAttribute('src', e.target.result);
             img.onload = function() {
-                window.initCanvas(img);
+                curImage = img
+                window.initCanvas();
             };
         }
         reader.readAsDataURL(inp.files[0]);
     }
 };
-function initCanvas(img) {
+function initCanvas() {
+    const img = curImage
     // var cvs = document.getElementById("resultCanvas");
     // var canvas = cvs.getContext("2d")
     canvas = new fabric.Canvas('resultCanvas', {
@@ -115,6 +120,10 @@ function initCanvas(img) {
     })
     canvas.setWidth(document.body.offsetWidth);
     canvas.setHeight(document.body.offsetHeight);
+    canvas.isDrawingMode = false; // 画笔
+    canvas.skipTargetFind = false; //画板元素不能被选中
+    canvas.selection = false;
+    canvas.selectable = false;
     imageInfo = {
         width: img.width+vleft,
         height: img.height+vtop
@@ -128,11 +137,34 @@ function initCanvas(img) {
     var tempCtx = document.createElement("canvas").getContext("2d");
     tempCtx.canvas.width = imageInfo.width;
     tempCtx.canvas.height = imageInfo.height;
-    tempCtx.drawImage(img, vleft, vtop);
+    tempCtx.drawImage(img, 0, 0);
     // canvas.drawImage(img, 0, 0);
     imageInfo.data = tempCtx.getImageData(0, 0, imageInfo.width, imageInfo.height);
     initEvent()
 };
+function moveImage() {
+   
+    vleft = 200;
+    vtop = 100;
+    new fabric.ActiveSelection(canvas.getObjects(), { canvas:canvas,left:vleft,top:vtop });
+    // canvas.setActiveObject(selection);
+    
+    canvas.requestRenderAll();
+    // image.set({left: vleft,top: vtop})
+    // canvas.requestRenderAll();
+    // const image = canvas.getObjects()[0];
+    // const left = image.left || 0
+    // const top =image.top || 0
+    // imageInfo = {
+    //     width: image.width + vleft,
+    //     height: image.height + vtop
+    // }
+    // let tempCtx = document.createElement("canvas").getContext("2d");
+    // tempCtx.canvas.width = imageInfo.width;
+    // tempCtx.canvas.height = imageInfo.height;
+    // tempCtx.drawImage(curImage, vleft, vtop);
+    // imageInfo.data = tempCtx.getImageData(0, 0, imageInfo.width, imageInfo.height);
+}
 function initEvent() {
     canvas.on("mouse:down", (options) => {
         onMouseDown(options.e)
@@ -150,7 +182,7 @@ function onMouseDown(e) {
         if(obj.isTemp){
             canvas.remove(obj);
         }
-        drawMask(downPoint.x, downPoint.y);
+        drawMask(downPoint.x-vleft, downPoint.y-vtop);
     }
 };
 // function showThreshold() {
@@ -184,10 +216,10 @@ function test1(mask) {
     }
 }
 function path(contours) {
-    let str = `M ${contours[0].x} ${contours[0].y}`
+    let str = `M ${contours[0].x+vleft} ${contours[0].y+vtop}`
     for(let i=0;i<contours.length;i++){
         let item = contours[i]
-        str+=`L ${item.x} ${item.y}`
+        str+=`L ${item.x+vleft} ${item.y+vtop}`
     }
     str+=" z"
     var path = new fabric.Path(str);
